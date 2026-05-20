@@ -18,6 +18,9 @@ export default defineConfig({
     ],
     server: {
         cors: true,
+        hmr: {
+            host: 'laravel.local',
+        },
         watch: {
             ignored: ['**/storage/framework/views/**'],
         },
