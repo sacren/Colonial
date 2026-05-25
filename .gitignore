@@ -1,4 +1,7 @@
 /.phpunit.cache
+/cypress/downloads
+/cypress/screenshots
+/cypress/videos
 /node_modules
 .pnpm-store/
 /public/build
