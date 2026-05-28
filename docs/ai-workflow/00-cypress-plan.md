@@ -1,0 +1,136 @@
+# Cypress-for-Laravel Build Plan
+
+## Goal
+
+Build out Cypress E2E coverage for this Laravel 13 / Livewire 4 / Sail / Cypress project across well-scoped phases: feature coverage, framework maturity, CI/CD, documentation. Each phase ships as one or more PR-reviewed commits.
+
+## Standing rules
+
+1. **Feature branches.** Every commit (or tightly-scoped commit set) lives on `feature/<short-slug>` cut from `13.x-livewire-8038`. Pushed to GitHub, opened as a PR, merged. No direct commits to the working branch.
+2. **Handoff docs and plan in the repo.** AI handoff docs live under `docs/ai-workflow/`, one per commit, named `NN-short-slug.md`. The plan itself lives at `docs/ai-workflow/00-cypress-plan.md` and is updated as work progresses.
+3. **Tests on every change.** New behaviour gets a spec. Refactors get a clean local Cypress run before the PR opens.
+4. **Pint before PHP, Cypress before PR.** `vendor/bin/pint --dirty --format agent` for any PHP touch; `pnpm exec cypress run` clean before requesting review.
+5. **PR descriptions designed for review.** Every PR body has: Context (why), What changed (bullets), QA notes (how to verify), screenshots when UI is touched.
+6. **Watch for organic review opportunities.** If a real review-worthy issue appears in any PR — redundant selector, weak assertion, missed extraction — leave a self-review comment, push a fix, merge.
+7. **Document real flake fixes.** If a real flake surfaces during Phase 4 work, fix the root cause and document the find-and-fix in the commit message and `cypress/README.md`. Do not manufacture a flake if none appears organically.
+
+---
+
+## Phase 1 — Process foundation (1 commit)
+
+### Commit 4 — Establish in-repo AI-workflow docs
+- Branch: `feature/ai-workflow-docs`
+- Create `docs/ai-workflow/` containing:
+  - `README.md` describing the handoff pattern.
+  - `00-cypress-plan.md` (this plan).
+  - `03-welcome-smoke-test.md` (handoff doc for the welcome smoke test shipped in commit 3).
+- Open PR, merge.
+
+---
+
+## Phase 2 — Coverage breadth (4 commits)
+
+### Commit 5 — Welcome page navigation links
+- Spec asserts Log in and Register links present + correct `href`.
+- Branch: `feature/welcome-nav-links`
+
+### Commit 6 — Login error path
+- Visit `/login`, submit bad credentials, assert error message rendered.
+- No DB seeding required — bad creds are bad whether a user exists or not.
+- Branch: `feature/login-error-flow`
+
+### Commit 7 — Register happy path
+- Fill `/register` with factory-shaped data, submit, assert redirect.
+- Note: `/dashboard` has `verified` middleware; success target depends on Fortify's MustVerifyEmail setting. Inspect before writing the assertion.
+- Branch: `feature/register-happy-path`
+
+### Commit 8 — Authenticated dashboard
+- Factory-create a verified user in the DB, log in (via a stub or UI), assert dashboard renders, sign-out works.
+- This is the spec that motivates extracting `cy.login` in commit 9.
+- Branch: `feature/dashboard-auth`
+
+---
+
+## Phase 3 — Framework maturity (3 commits)
+
+### Commit 9 — Custom command `cy.login`
+- Extract repeated UI-login from specs 7/8 into `cypress/support/commands.js`.
+- Refactor specs to use it.
+- Branch: `feature/cy-login-command`
+
+### Commit 10 — Fixtures
+- `cypress/fixtures/users.json` for test user shapes.
+- Specs load via `cy.fixture()`.
+- Branch: `feature/test-fixtures`
+
+### Commit 11 — Network intercepts
+- One spec demonstrating `cy.intercept()` against a Livewire or Fortify request.
+- Branch: `feature/network-intercepts`
+
+---
+
+## Phase 4 — CI/CD + monitoring (5 commits)
+
+Environment notes for this phase:
+- **Don't run Sail in CI.** Use native PHP + Node on the runner.
+- **Database:** SQLite (in-memory or file) via `DB_CONNECTION=sqlite` env override.
+- **`baseUrl` for CI:** `http://localhost:8000` (Artisan serve). Override via `CYPRESS_BASE_URL` env per run.
+- **Cypress in CI:** consider `cypress-io/github-action` (handles install + caching) or `cypress/included` Docker image.
+
+### Commit 12 — CI scaffold (Pint formatting check)
+- `.github/workflows/ci.yml` runs `vendor/bin/pint --test` on push and pull_request.
+- Real value (catches PHP formatting issues), proves the YAML and runner work before adding Cypress complexity.
+- Branch: `feature/ci-scaffold`
+- Alternative payload: `php artisan test` (Pest) instead of Pint. Pint chosen for simpler scaffolding (no DB env setup). Pest can be added separately.
+
+### Commit 13 — Cypress in CI
+- Add a `cypress` job to the workflow: install PHP + Node, set up SQLite, run `php artisan serve` in the background, run `cypress run` headless against `localhost:8000`.
+- Branch: `feature/ci-cypress`
+
+### Commit 14 — Artifacts on failure
+- Upload `cypress/screenshots/` and `cypress/videos/` as workflow artifacts when the Cypress job fails.
+- Branch: `feature/ci-artifacts`
+
+### Commit 15 — Flake retries
+- `retries: { runMode: 2, openMode: 0 }` in `cypress.config.js`.
+- Document retry policy in `cypress/README.md` (created next phase).
+- **Standing rule 7 applies:** if any real flake was observed across commits 12–14, fix the root cause here and document.
+- Branch: `feature/flake-retries`
+
+### Commit 16 — Failure notification (monitoring)
+- Add a workflow step that posts to a Slack or Discord webhook on failed runs.
+- Webhook URL stored as `SLACK_WEBHOOK_URL` / `DISCORD_WEBHOOK_URL` repo secret.
+- Branch: `feature/ci-notification`
+
+---
+
+## Phase 5 — Polish (2 commits)
+
+### Commit 17 — `cypress/README.md`
+- File naming, selector preference order, custom-command index, how to run locally + in CI, how to debug a failure, retry policy, link to `docs/ai-workflow/`.
+- Branch: `feature/cypress-readme`
+
+### Commit 18 — PR review demo (conditional)
+- If standing rule 6 already produced a real review-comment artifact on an earlier PR, **skip this commit entirely** and note that in the next plan update.
+- If no organic review occurred across commits 5–15: open a `feature/review-demo` PR containing one small deliberate flaw (recommended: `cy.wait(1000)` masking a race). Leave a review comment articulating *why* it's wrong (Cypress retry semantics). Push fix. Merge.
+
+---
+
+## Scope
+
+- **Playwright POC** — out of scope. Cypress depth is the focus.
+- **TestRail** — out of scope.
+
+---
+
+## How to resume in a new session
+
+1. Read this plan at `docs/ai-workflow/00-cypress-plan.md` (the auto-loaded memory entry points here).
+2. Run `git log --oneline -20` and check the GitHub remote PR list to see what's landed.
+3. Match against this plan to find the next commit.
+4. Confirm direction with the user before starting any commit.
+5. Open the corresponding handoff doc in `docs/ai-workflow/` once started.
+
+## Living plan
+
+Refinement is expected as work progresses. PR reviews can suggest plan edits.
