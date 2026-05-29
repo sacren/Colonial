@@ -3,4 +3,10 @@ describe('Welcome page', () => {
     cy.visit('/')
     cy.contains('h1', "Let's get started").should('be.visible')
   })
+
+  it('links Log in to /login and Register to /register', () => {
+    cy.visit('/')
+    cy.contains('a', 'Log in').should('have.attr', 'href', '/login')
+    cy.contains('a', 'Register').should('have.attr', 'href', '/register')
+  })
 })
