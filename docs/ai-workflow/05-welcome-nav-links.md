@@ -11,8 +11,8 @@ Adds a second test case to `cypress/e2e/welcome.cy.js`, asserting that the welco
 ```js
 it('links Log in to /login and Register to /register', () => {
   cy.visit('/')
-  cy.contains('a', 'Log in').should('have.attr', 'href', '/login')
-  cy.contains('a', 'Register').should('have.attr', 'href', '/register')
+  cy.contains('a', 'Log in').should('have.attr', 'href').and('include', '/login')
+  cy.contains('a', 'Register').should('have.attr', 'href').and('include', '/register')
 })
 ```
 
@@ -27,8 +27,8 @@ describe('Welcome page', () => {
 
   it('links Log in to /login and Register to /register', () => {
     cy.visit('/')
-    cy.contains('a', 'Log in').should('have.attr', 'href', '/login')
-    cy.contains('a', 'Register').should('have.attr', 'href', '/register')
+    cy.contains('a', 'Log in').should('have.attr', 'href').and('include', '/login')
+    cy.contains('a', 'Register').should('have.attr', 'href').and('include', '/register')
   })
 })
 ```
@@ -38,8 +38,8 @@ describe('Welcome page', () => {
 ### Why these assertions
 
 - `resources/views/welcome.blade.php` renders an unauthenticated nav containing `<a href="{{ route('login') }}">Log in</a>` and `<a href="{{ route('register') }}">Register</a>`.
-- `config/fortify.php` sets `'prefix' => ''` and enables `Features::registration()`, so `route('login')` resolves to `/login` and `route('register')` resolves to `/register`.
-- The assertions verify both that the links exist (`cy.contains('a', '<text>')`) and that they point to the expected URLs (`.should('have.attr', 'href', '<path>')`).
+- Laravel's `route()` helper generates **absolute URLs by default** (per the official Laravel helpers documentation). The third parameter `$absolute` is `true` unless explicitly overridden. So `route('login')` evaluates to `http://<app.url>/login` (e.g., `http://laravel.local:8038/login` in local dev), not `/login`.
+- The assertions therefore check that the `href` attribute **contains** `/login` and `/register` rather than matches a specific URL string. This decouples the test from any specific host: it works against `http://laravel.local:8038` locally, `http://localhost:8000` in CI (per the plan's Phase 4), and any production hostname.
 
 ### Why same file, same describe block
 
