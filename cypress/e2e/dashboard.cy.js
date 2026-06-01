@@ -5,10 +5,10 @@ describe('Authenticated dashboard', () => {
     // off-canvas and [data-test=sidebar-menu-button] is unreachable.
     cy.viewport(1280, 800)
 
-    // Seed + authenticate via the test-only route. The server factory-creates a
-    // verified user and logs them in; Cypress captures the session cookie from
-    // the response and carries it into the next visit.
-    cy.request('POST', '/testing/login')
+    // Seed + authenticate. cy.login wraps the test-only route: the server
+    // factory-creates a verified user and logs them in; Cypress captures the
+    // session cookie from the response and carries it into the next visit.
+    cy.login()
 
     cy.visit('/dashboard')
 
