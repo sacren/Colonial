@@ -1,25 +1,18 @@
 // ***********************************************
-// This example commands.js shows you how to
-// create various custom commands and overwrite
-// existing commands.
-//
-// For more comprehensive examples of custom
-// commands please read more here:
+// Custom commands for the E2E suite.
 // https://on.cypress.io/custom-commands
 // ***********************************************
-//
-//
-// -- This is a parent command --
-// Cypress.Commands.add('login', (email, password) => { ... })
-//
-//
-// -- This is a child command --
-// Cypress.Commands.add('drag', { prevSubject: 'element'}, (subject, options) => { ... })
-//
-//
-// -- This is a dual command --
-// Cypress.Commands.add('dismiss', { prevSubject: 'optional'}, (subject, options) => { ... })
-//
-//
-// -- This will overwrite an existing command --
-// Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
+
+/**
+ * Authenticate as a fresh, verified user.
+ *
+ * Wraps the env-gated `POST /testing/login` server route (see routes/testing.php).
+ * The server factory-creates a verified user and logs them in; the session cookie
+ * rides back on the response and Cypress carries it into the next `cy.visit`.
+ *
+ * Cypress runs on the desktop while the app and DB run on the server, so seeding
+ * goes over HTTP rather than through `cy.task()`, which can't reach the server DB.
+ */
+Cypress.Commands.add('login', () => {
+  cy.request('POST', '/testing/login')
+})

@@ -47,14 +47,20 @@ by design, because this is an authentication-bypass endpoint.
 ### `cypress/e2e/dashboard.cy.js` (new)
 
 ```js
+cy.viewport(1280, 800)
 cy.request('POST', '/testing/login')
 cy.visit('/dashboard')
 cy.url().should('include', '/dashboard')
-cy.get('[data-test=sidebar-menu-button]').should('be.visible')
+cy.contains('Platform').should('be.visible')
 cy.get('[data-test=sidebar-menu-button]').click()
 cy.get('[data-test=logout-button]:visible').click()
 cy.location('pathname').should('eq', '/')
 ```
+
+> **Updated in commit 9:** the `cy.request('POST', '/testing/login')` call above
+> is now `cy.login()` (see [09-cy-login-command.md](09-cy-login-command.md)). The
+> explicit `cy.viewport(1280, 800)` was added to force a desktop layout — see the
+> viewport note below.
 
 ## Rationale
 
@@ -66,14 +72,23 @@ not fit this project: `cy.task()` runs in Cypress's Node process on the
 therefore go through the server over HTTP (`cy.request`), which is what the
 test-only route provides.
 
+### Why force a 1280px viewport
+
+Cypress's **default viewport is 1000×660** — and 1000px is just below Tailwind's
+`lg` breakpoint (1024px), where this app collapses the sidebar off-canvas and
+`[data-test=sidebar-menu-button]` becomes unreachable. The spec calls
+`cy.viewport(1280, 800)` to force a desktop layout where the user menu is active.
+(An earlier draft of this doc mistakenly claimed Cypress defaults to 1280px; it
+does not, which is exactly why the explicit `cy.viewport` is required.)
+
 ### Why `:visible` on the logout button
 
 The app layout (`layouts/app/sidebar.blade.php`) renders a `logout-button` in
 **both** the desktop user menu (`hidden lg:block`) and the mobile header menu
-(`lg:hidden`). At Cypress's default 1280px viewport the desktop menu is active
-and the mobile one is hidden. Opening the user menu (`sidebar-menu-button`) and
-clicking `[data-test=logout-button]:visible` targets exactly the one active
-control, avoiding a multiple-elements error.
+(`lg:hidden`). At the forced 1280px viewport the desktop menu is active and the
+mobile one is hidden. Opening the user menu (`sidebar-menu-button`) and clicking
+`[data-test=logout-button]:visible` targets exactly the one active control,
+avoiding a multiple-elements error.
 
 ### Why assert `pathname === '/'` after logout
 
@@ -86,11 +101,11 @@ This spec proves the *browser journey* — authenticated user sees the app shell
 and can sign out. It deliberately does not assert DB-level facts about the user
 row; those belong in a Pest feature test.
 
-## What this sets up for commit 9
+## What this set up for commit 9
 
-`cy.login` (next commit) extracts `cy.request('POST', '/testing/login')` into a
-reusable custom command, so this spec and future authenticated specs share one
-login path.
+Commit 9 extracted `cy.request('POST', '/testing/login')` into the reusable
+`cy.login` custom command, so this spec and future authenticated specs share one
+login path. See [09-cy-login-command.md](09-cy-login-command.md).
 
 ## Verification
 
