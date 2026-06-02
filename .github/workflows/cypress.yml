@@ -1,0 +1,75 @@
+name: cypress
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+      - master
+      - workos
+      - 13.x-livewire-8038
+  pull_request:
+    branches:
+      - develop
+      - main
+      - master
+      - workos
+      - 13.x-livewire-8038
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Add Flux Credentials Loaded From ENV
+        run: composer config http-basic.composer.fluxui.dev "${{ secrets.FLUX_USERNAME }}" "${{ secrets.FLUX_LICENSE_KEY }}"
+
+      - name: Install PHP Dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Install Node Dependencies
+        run: pnpm install
+
+      - name: Prepare Environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          sed -i 's#^APP_URL=.*#APP_URL=http://127.0.0.1:8000#' .env
+
+      - name: Prepare SQLite Database
+        run: |
+          rm -f database/database.sqlite
+          touch database/database.sqlite
+          php artisan migrate --force
+
+      - name: Build Assets
+        run: pnpm run build
+
+      - name: Serve Application
+        run: php artisan serve --host=127.0.0.1 --port=8000 &
+
+      - name: Wait For Application
+        run: npx wait-on http://127.0.0.1:8000
+
+      - name: Run Cypress
+        run: pnpm exec cypress run
+        env:
+          CYPRESS_BASE_URL: http://127.0.0.1:8000
