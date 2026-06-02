@@ -1,16 +1,25 @@
 describe('Register happy path', () => {
-  it('registers a new user and lands them on an authenticated page', () => {
+  beforeEach(() => {
+    // Load the shared user shapes once per test; `this.users` is then available
+    // in the `function () {}` test body below.
+    cy.fixture('users').as('users')
+  })
+
+  it('registers a new user and lands them on an authenticated page', function () {
+    const { name, password } = this.users.registrant
+
     // Unique per run: the server DB persists between runs, so a fixed email
     // would pass once then fail with "email already taken". A fresh address
-    // keeps the spec deterministic and rerunnable without DB cleanup.
+    // keeps the spec deterministic and rerunnable without DB cleanup. Only the
+    // email varies per run, so it stays inline rather than in the fixture.
     const email = `register-${Date.now()}@example.com`
 
     cy.visit('/register')
 
-    cy.get('input[name=name]').type('Test User')
+    cy.get('input[name=name]').type(name)
     cy.get('input[name=email]').type(email)
-    cy.get('input[name=password]').type('Password123!')
-    cy.get('input[name=password_confirmation]').type('Password123!')
+    cy.get('input[name=password]').type(password)
+    cy.get('input[name=password_confirmation]').type(password)
     cy.get('[data-test=register-user-button]').click()
 
     // Cypress asserts user-observable success, not internal config. A valid
