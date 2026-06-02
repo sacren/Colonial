@@ -72,19 +72,39 @@ Build out Cypress E2E coverage for this Laravel 13 / Livewire 4 / Sail / Cypress
 ## Phase 4 — CI/CD + monitoring (5 commits)
 
 Environment notes for this phase:
-- **Don't run Sail in CI.** Use native PHP + Node on the runner.
-- **Database:** SQLite (in-memory or file) via `DB_CONNECTION=sqlite` env override.
-- **`baseUrl` for CI:** `http://localhost:8000` (Artisan serve). Override via `CYPRESS_BASE_URL` env per run.
-- **Cypress in CI:** consider `cypress-io/github-action` (handles install + caching) or `cypress/included` Docker image.
+- **Pre-existing CI (the plan originally missed this).** The repo was scaffolded with two starter-kit workflows:
+  - `.github/workflows/lint.yml` — runs `composer lint` (`pint --parallel`, the **fixer**) on PHP 8.4.
+  - `.github/workflows/tests.yml` — runs `./vendor/bin/pest` across a PHP 8.3/8.4/8.5 matrix, with a Node build.
+  Both trigger **only** on `develop`/`main`/`master`/`workos`, so they never run on `13.x-livewire-8038` or its PRs. Phase 4 builds **around** these workflows, not as a parallel `ci.yml`.
+- **Don't run Sail in CI.** Use native PHP + Node on the runner (the existing workflows already do).
+- **Flux credentials.** `composer install` needs the Flux license; the existing workflows set it with `composer config http-basic.composer.fluxui.dev "${{ secrets.FLUX_USERNAME }}" "${{ secrets.FLUX_LICENSE_KEY }}"`. The Cypress job needs the same secrets.
+- **Database:** SQLite **file** via `DB_CONNECTION=sqlite` for the Cypress job — a served app is a separate process, so `:memory:` won't share state across requests.
+- **`baseUrl` for CI:** `cypress.config.js` hard-codes the Sail dev URL (`http://laravel.local:8038`). Do **not** edit the committed value; override per run with `CYPRESS_BASE_URL` → `http://127.0.0.1:8000` (Artisan serve).
+- **Package manager:** the project is pnpm (`pnpm-lock.yaml`); the starter workflows use npm. New CI work uses pnpm to match the project.
 
-### Commit 12 — CI scaffold (Pint formatting check)
-- `.github/workflows/ci.yml` runs `vendor/bin/pint --test` on push and pull_request.
-- Real value (catches PHP formatting issues), proves the YAML and runner work before adding Cypress complexity.
-- Branch: `feature/ci-scaffold`
-- Alternative payload: `php artisan test` (Pest) instead of Pint. Pint chosen for simpler scaffolding (no DB env setup). Pest can be added separately.
+### Commit 12 — Wire existing CI onto the project branch (and make lint fail-closed)
+- **Supersedes the original "new `ci.yml` running `pint --test`"**, which would duplicate `lint.yml`. The real gaps: CI never fires for this branch, and the lint job *fixes* rather than *fails*.
+- Edit `.github/workflows/lint.yml`:
+  - Add `13.x-livewire-8038` to the `push` and `pull_request` branch filters.
+  - Change the Pint step from `composer lint` (fixer — mutates files, never fails a build) to `composer lint:check` (`pint --parallel --test`, fails on violations). Drop the commented-out auto-commit block, now moot.
+- Edit `.github/workflows/tests.yml`:
+  - Add `13.x-livewire-8038` to the `push` and `pull_request` branch filters so Pest runs on our PRs too.
+- This is the genuine "scaffold": it proves the runner works for our branch flow before adding Cypress, using the Pint check the original commit 12 wanted — without a redundant file.
+- **Capture the organic PR review here.** That the planned `ci.yml` was redundant and that no workflow targeted our branch is a real review finding (standing rule 6) — record it in the PR description / commit rationale. This satisfies the review-artifact goal without the manufactured demo in commit 18.
+- Branch: `feature/ci-on-branch`
 
 ### Commit 13 — Cypress in CI
-- Add a `cypress` job to the workflow: install PHP + Node, set up SQLite, run `php artisan serve` in the background, run `cypress run` headless against `localhost:8000`.
+- Add a new `.github/workflows/cypress.yml` (kept separate from `tests.yml`: Cypress needs the app **served** and a distinct setup). Trigger on `push`/`pull_request` for `13.x-livewire-8038`.
+- Job (native, no Sail):
+  - `actions/checkout`.
+  - `shivammathur/setup-php` at 8.3; `actions/setup-node` at 22 with pnpm.
+  - Flux credentials via `composer config http-basic...` (secrets as above).
+  - `composer install --no-interaction --prefer-dist`.
+  - `pnpm install`, then `pnpm run build` (the Vite manifest must exist for the app to render).
+  - `cp .env.example .env`; set `DB_CONNECTION=sqlite`; create `database/database.sqlite`; `php artisan key:generate`; `php artisan migrate --force`.
+  - Start the app: `php artisan serve --host=127.0.0.1 --port=8000 &`, then block on it (e.g. `npx wait-on http://127.0.0.1:8000`).
+  - Run headless: `CYPRESS_BASE_URL=http://127.0.0.1:8000 pnpm exec cypress run`.
+- The test-only `/testing/login` route registers because CI is not production (`APP_ENV=local` from `.env.example`), so `cy.login` and `User::factory()` work against the migrated SQLite DB.
 - Branch: `feature/ci-cypress`
 
 ### Commit 14 — Artifacts on failure
