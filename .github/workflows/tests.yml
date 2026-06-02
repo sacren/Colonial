@@ -7,12 +7,14 @@ on:
       - main
       - master
       - workos
+      - 13.x-livewire-8038
   pull_request:
     branches:
       - develop
       - main
       - master
       - workos
+      - 13.x-livewire-8038
 
 jobs:
   ci:
