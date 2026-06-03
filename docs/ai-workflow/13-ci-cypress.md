@@ -23,8 +23,8 @@ desktop runs.
 2. **Flux credentials** via `composer config http-basic...` (same secrets the
    existing `lint.yml`/`tests.yml` already rely on) — required before
    `composer install`, since Flux is a Composer dependency.
-3. `composer install` + `pnpm install` (the latter pulls and builds the Cypress
-   binary).
+3. `composer install` + `pnpm install`, then an explicit `pnpm exec cypress
+   install` to guarantee the Cypress binary (see rationale below).
 4. **Prepare environment:** `cp .env.example .env`, `key:generate`, and rewrite
    `APP_URL` to `http://127.0.0.1:8000` (the serve host).
 5. **Prepare SQLite:** recreate `database/database.sqlite` from scratch and
@@ -63,6 +63,23 @@ A file (not `:memory:`) is required because `artisan serve` is a **separate
 process** from the migrate step — an in-memory DB wouldn't be shared. Recreating
 the file each run guarantees a clean, fully-migrated schema regardless of what a
 checkout brings.
+
+### Why an explicit `cypress install` step (the binary-cache gotcha)
+
+The Cypress npm package and the Cypress **binary** are separate artifacts:
+`pnpm install` places the package in `node_modules`, but the large binary is
+downloaded by Cypress's post-install into a *global* cache, `~/.cache/Cypress` —
+outside both `node_modules` and the pnpm store. `Setup Node`'s `cache: pnpm`
+persists the **pnpm store** (keyed on the lockfile), which does **not** cover
+`~/.cache/Cypress`. On a warm-store run, pnpm treats the package as already built
+and skips its post-install, so the binary — never cached — is absent, and
+`cypress run` fails with "the Cypress binary is missing." `package.json` already
+authorizes the post-install (`pnpm.onlyBuiltDependencies: ["cypress"]`); the gap
+is purely the CI cache boundary. The fix is a dedicated `pnpm exec cypress
+install` step: it is idempotent (no-op when present, download when missing), so
+the binary is guaranteed regardless of cache state. (A further optimization would
+be to also cache `~/.cache/Cypress` keyed on the Cypress version; deferred, as
+correctness comes first.)
 
 ### Why the test-only login route works in CI
 

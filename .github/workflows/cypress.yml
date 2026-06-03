@@ -48,6 +48,9 @@ jobs:
       - name: Install Node Dependencies
         run: pnpm install
 
+      - name: Install Cypress Binary
+        run: pnpm exec cypress install
+
       - name: Prepare Environment
         run: |
           cp .env.example .env
