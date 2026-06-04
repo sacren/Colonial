@@ -76,3 +76,20 @@ jobs:
         run: pnpm exec cypress run
         env:
           CYPRESS_BASE_URL: http://127.0.0.1:8000
+          CYPRESS_VIDEO: true
+
+      - name: Upload Cypress screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots
+          path: cypress/screenshots
+          if-no-files-found: ignore
+
+      - name: Upload Cypress videos
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-videos
+          path: cypress/videos
+          if-no-files-found: ignore
