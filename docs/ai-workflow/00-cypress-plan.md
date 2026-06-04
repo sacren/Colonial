@@ -130,9 +130,32 @@ Environment notes for this phase:
 - File naming, selector preference order, custom-command index, how to run locally + in CI, how to debug a failure, retry policy, link to `docs/ai-workflow/`.
 - Branch: `feature/cypress-readme`
 
-### Commit 18 — PR review demo (conditional)
-- If standing rule 6 already produced a real review-comment artifact on an earlier PR, **skip this commit entirely** and note that in the next plan update.
-- If no organic review occurred across commits 5–15: open a `feature/review-demo` PR containing one small deliberate flaw (recommended: `cy.wait(1000)` masking a race). Leave a review comment articulating *why* it's wrong (Cypress retry semantics). Push fix. Merge.
+### Commit 18 — PR review demo (conditional) → **resolved: skipped**
+- **Outcome: the manufactured-flaw demo is skipped**, per the condition above —
+  a *real* review-worthy issue surfaced organically, which standing rule 6 says
+  to prefer over a staged one.
+- **The organic review:** while starting Phase 4, the originally planned commit 12
+  (a new `ci.yml` running `pint --test`) was found to be **redundant** with the
+  repo's existing `lint.yml`, and **neither** existing workflow triggered on
+  `13.x-livewire-8038` or its PRs — so every PR in this effort had been getting
+  no CI, and the lint job ran the Pint *fixer* (never failing). That finding was
+  raised, recorded in the commit-12 PR description and `12-ci-on-branch.md`, and
+  it reshaped commits 12–13 (see the plan revision committed as *"Revise Phase 4
+  plan around existing CI workflows"*).
+- Since that is a genuine review artifact — caught, articulated, and acted on —
+  no deliberate `cy.wait(1000)` flaw is introduced. Branch for this closing note:
+  `feature/plan-closeout`.
+
+---
+
+## Status — plan complete
+
+All five phases are done: process foundation (1), coverage breadth (2), framework
+maturity (3), CI/CD + monitoring (4), and polish (5). The E2E suite covers the
+welcome, login, register, dashboard, and profile flows; runs locally and as a CI
+gate on every PR with artifacts, retries, and failure notification; and is
+documented in `cypress/README.md` plus the per-commit handoff docs here.
+Further work beyond this plan is new scope, per *Living plan* below.
 
 ---
 
